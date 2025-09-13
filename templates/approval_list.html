@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approval List - Admin Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/three-ui.css') }}">
+
+  <!-- Background Circles -->
+<div class="bg-shapes">
+  <div class="shape"></div>
+  <div class="shape"></div>
+  <div class="shape"></div>
+  <div class="shape"></div>
+</div>
+
+<div class="floating-bg">
+  <div class="shape top"></div>
+  <div class="shape top"></div>
+  <div class="shape bottom"></div>
+  <div class="shape bottom"></div>
+</div>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: white;
+      overflow-x: hidden;
+    
+    }
+    
+
+    .dashboard-grid { 
+      display: grid; 
+      grid-template-columns: 1fr; 
+      gap: 20px; 
+      margin: 30px; 
+      position: relative; 
+      z-index: 10; 
+    }
+
+    .dashboard-card {
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      color: #fff;
+      position: relative;
+      z-index: 10;
+    }
+
+    .report-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+    .report-table th, .report-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); text-align: center; }
+
+    .btn { 
+      background: linear-gradient(90deg, #0b67ff, #0a8df7); 
+      color: white; 
+      padding: 6px 12px; 
+      border-radius: 8px; 
+      border: none; 
+      cursor: pointer; 
+      font-size: 13px; 
+      font-weight: 600; 
+      margin: 2px;
+    }
+    .btn:hover { background: #085edc; }
+    .btn.reject { background: #e74c3c; }
+
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a { text-decoration: none; color: white; font-weight: 500; padding: 5px 10px; border-radius: 6px; transition: 0.3s; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.2); }
+
+    header { position: relative; z-index: 10; }
+    nav.glass { backdrop-filter: blur(20px); background: rgba(255,255,255,0.05); padding: 10px 30px; border-radius: 12px; margin: 10px; }
+
+    /* Three.js canvas covers background */
+    #three-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
+  </style>
+</head>
+<body>
+  <!-- Three.js Canvas for 3D Floating Polygons -->
+  <div id="three-bg"></div>
+
+  <!-- HEADER -->
+  <header>
+    <nav class="glass navbar">
+      <div class="logo"><span>ADMIN PORTAL</span></div>
+      <div class="nav-links">
+        <a href="#" class="active">Approval List</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+    <div class="dashboard-card">
+      <h3>Pending Approvals</h3>
+      <table class="report-table" id="approvalTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Pending users will be populated here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- JS for Approvals -->
+  <script>
+    async function loadPendingUsers() {
+      try {
+        const res = await fetch("/api/admin/pending");
+        const data = await res.json();
+        const tbody = document.querySelector("#approvalTable tbody");
+        tbody.innerHTML = "";
+
+        if (data.success && data.pending.length > 0) {
+          data.pending.forEach(user => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${user.name}</td>
+              <td>${user.email}</td>
+              <td>
+                <select id="role-${user._id}">
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty</option>
+                </select>
+              </td>
+              <td>
+                <button class="btn approve-btn" data-email="${user.email}" data-id="${user._id}">Approve</button>
+                <button class="btn reject-btn" data-email="${user.email}" data-id="${user._id}">Reject</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          document.querySelectorAll(".approve-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+              const email = btn.dataset.email;
+              const role = document.getElementById(`role-${btn.dataset.id}`).value;
+              const res = await fetch("/api/admin/approve", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, role })
+              });
+              const result = await res.json();
+              alert(result.message);
+              loadPendingUsers();
+            });
+          });
+
+          document.querySelectorAll(".reject-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+              const email = btn.dataset.email;
+              const reason = prompt("Enter reason for rejection:");
+              if (!reason) return;
+              const res = await fetch("/api/admin/reject", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, reason })
+              });
+              const result = await res.json();
+              alert(result.message);
+              loadPendingUsers();
+            });
+          });
+
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4">No pending approvals</td></tr>`;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error loading pending users.");
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", loadPendingUsers);
+  </script>
+
+  <!-- Three.js 3D Floating Polygons -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById("three-bg").appendChild(renderer.domElement);
+
+    const polygons = [];
+
+    function createPoly(x, y, z, size, color) {
+      const geometry = new THREE.IcosahedronGeometry(size, 1);
+      const material = new THREE.MeshBasicMaterial({color: color, wireframe:true});
+      const poly = new THREE.Mesh(geometry, material);
+      poly.position.set(x, y, z);
+      scene.add(poly);
+      polygons.push({mesh: poly, direction: Math.random() > 0.5 ? 1 : -1, speed: 0.5 + Math.random()});
+    }
+
+    // Top floating polygons
+    for(let i=0;i<3;i++){
+      createPoly((Math.random()*20-10), (Math.random()*5+5), -10, 1+Math.random()*0.8, 0x00f7ff);
+    }
+    // Bottom floating polygons
+    for(let i=0;i<3;i++){
+      createPoly((Math.random()*20-10), -(Math.random()*5+5), -12, 0.8+Math.random()*0.7, 0x00ff88);
+    }
+
+    camera.position.z = 20;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      polygons.forEach(p => {
+        p.mesh.rotation.x += 0.01;
+        p.mesh.rotation.y += 0.01;
+        p.mesh.position.y += 0.02 * p.direction;
+        if(p.mesh.position.y > 10) p.direction = -1;
+        if(p.mesh.position.y < -10) p.direction = 1;
+      });
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", ()=>{
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

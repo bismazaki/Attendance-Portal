@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Attendance</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+<style>
+  body {
+    color: white;
+    font-family: sans-serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Floating Shapes Container */
+  #floatingShapes {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .floating-shape {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0.15;
+    mix-blend-mode: screen;
+    animation: floatAnim linear infinite;
+  }
+
+  @keyframes floatAnim {
+    0% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+    50% { transform: translateY(-80px) rotateX(180deg) rotateY(180deg); opacity: 0.3; }
+    100% { transform: translateY(0) rotateX(360deg) rotateY(360deg); }
+  }
+
+  /* Navbar logout styling */
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    position: relative;
+    z-index: 2;
+  }
+  .nav-links a {
+    margin-right: 15px;
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+  }
+  .logout-btn a {
+    background: #e74c3c;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.3s;
+  }
+  .logout-btn a:hover {
+    background: #c0392b;
+  }
+
+  /* Attendance card styling */
+  .attendance-card {
+    width: 600px; margin: 50px auto; padding: 20px;
+    border-radius: 20px; background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px); box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    position: relative; z-index: 1;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  th, td { padding: 10px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); }
+  .Present { color: limegreen; font-weight: bold; }
+  .Absent { color: red; font-weight: bold; }
+  .progress { background: rgba(255,255,255,0.2); border-radius: 10px; height: 14px; margin-top: 10px; }
+  .progress-bar { background: limegreen; height: 100%; text-align: center; color: black; font-size: 10px; border-radius: 10px; }
+
+</style>
+</head>
+<body>
+
+<!-- Floating Shapes -->
+<div id="floatingShapes"></div>
+
+<!-- NAVBAR -->
+<header>
+  <div class="container">
+    <nav class="glass">
+      <div class="logo" onclick="showPage('home')">
+        <span>ATTENDANCE PORTAL</span>
+      </div>
+      <nav class="navbar">
+        <div class="nav-links">
+          <a href="{{ url_for('index') }}">Home</a>
+          <a href="{{ url_for('dashboard') }}">Analysis</a>
+          <a href="{{ url_for('student_attendance_page') }}" class="active">My Attendance</a>
+          <a href="{{ url_for('chatbot') }}">Chat</a>
+        </div>
+        <div class="logout-btn">
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </nav>
+    </nav>
+  </div>
+</header>
+
+<!-- ATTENDANCE CARD -->
+<div class="attendance-card">
+  <h2>📋 My Attendance (This Month)</h2>
+  <div id="attendanceSummary"></div>
+  <table id="attendanceTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <div class="container">
+    <footer class="glass">
+      <div class="footer-content">
+        <div class="footer-links">
+          <a href="#">About Us</a>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">XML Sitemap</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="copyright">
+          &copy; All rights reserved. ATTENDANCE PORTAL
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- JS -->
+<script>
+// Generate floating shapes
+const colors = ["#0a8df7","#28a745","#e74c3c","#ff9800","#9b59b6"];
+const container = document.getElementById("floatingShapes");
+for(let i=0;i<30;i++){
+  const div = document.createElement("div");
+  div.className="floating-shape";
+  const size = 20 + Math.random()*60;
+  div.style.width = div.style.height = size+"px";
+  div.style.left = Math.random()*100+"%";
+  div.style.top = Math.random()*100+"%";
+  div.style.background = colors[Math.floor(Math.random()*colors.length)];
+  div.style.animationDuration = (5 + Math.random()*10)+"s";
+  container.appendChild(div);
+}
+
+// Attendance Script
+async function fetchAttendance() {
+  try {
+    const res = await fetch("/api/student/attendance");
+    const data = await res.json();
+
+    if (!data.success) { alert(data.message); return; }
+
+    const attendance = data.attendance;
+    const tbody = document.querySelector("#attendanceTable tbody");
+    tbody.innerHTML = "";
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const attendanceMap = {};
+    attendance.forEach(rec => {
+      const dateObj = new Date(rec.date);
+      const dateStr = `${dateObj.getFullYear()}-${(dateObj.getMonth()+1).toString().padStart(2,'0')}-${dateObj.getDate().toString().padStart(2,'0')}`;
+      attendanceMap[dateStr] = "Present";
+    });
+
+    let presentCount = 0;
+    for (let d=1; d<=daysInMonth; d++){
+      const dateStr = `${year}-${(month+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+      const status = attendanceMap[dateStr] || "Absent";
+      if(status==="Present") presentCount++;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${dateStr}</td><td class="${status}">${status}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    const percentage = Math.round((presentCount / daysInMonth)*100);
+    document.getElementById("attendanceSummary").innerHTML = `
+      <strong>Total Days:</strong> ${daysInMonth} | 
+      <strong>Present:</strong> ${presentCount} | 
+      <strong>Percentage:</strong> ${percentage}%
+      <div class="progress">
+        <div class="progress-bar" style="width:${percentage}%">${percentage}%</div>
+      </div>
+    `;
+  } catch(e){ console.error(e); }
+}
+
+fetchAttendance();
+</script>
+
+<script src="{{ url_for('static', filename='js/templatemo-glossy-touch.js') }}"></script>
+</body>
+</html>

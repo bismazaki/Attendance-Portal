@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Attendance Management</title>
+
+  <!-- ✅ Load CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: white; overflow-x: hidden; }
+
+    /* Loader overlay */
+    #loaderOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    #three-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Floating background shapes */
+    .bg-shapes .shape {
+      position: absolute;
+      width: 180px; height: 180px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 8px 25px rgba(255,255,255,0.15);
+      animation: float3D 12s infinite ease-in-out alternate;
+    }
+    .bg-shapes .shape:nth-child(1) { top: 10%; left: 8%; animation-delay: 0s; }
+    .bg-shapes .shape:nth-child(2) { top: 30%; right: 12%; animation-delay: 3s; }
+    .bg-shapes .shape:nth-child(3) { bottom: 25%; left: 15%; animation-delay: 6s; }
+    .bg-shapes .shape:nth-child(4) { bottom: 18%; right: 20%; animation-delay: 9s; }
+
+    @keyframes float3D {
+      0% { transform: translateY(0) translateX(0) scale(1) rotate(0deg); }
+      100% { transform: translateY(-60px) translateX(40px) scale(1.1) rotate(25deg); }
+    }
+
+    /* Glassmorphism auth card */
+    .auth-card { 
+      max-width: 420px; margin: 80px auto; padding: 30px; text-align: center; 
+      border-radius: 20px;
+      backdrop-filter: blur(25px);
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,255,255,0.05);
+      display: none;
+      opacity: 0; transform: translateY(40px) scale(0.9);
+      animation: fadeInUp 1s ease forwards;
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-card h2 { margin-bottom: 20px; font-size: 26px; color: #00f7ff; text-shadow: 0 0 10px #00f7ff; }
+
+    .form-group { margin: 15px 0; }
+    .form-group input {
+      width: 100%; padding: 12px; border-radius: 10px;
+      border: none; outline: none;
+      background: rgba(255,255,255,0.1); color: white;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    .form-group input:focus {
+      box-shadow: 0 0 15px #00f7ff, 0 0 30px #6a11cb;
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* ✅ Camera dotted circle with glow pulse */
+    .camera-section { margin: 20px 0; display: flex; justify-content: center; }
+    .camera-section video { 
+      width: 250px; height: 250px;
+      border-radius: 50%;
+      border: 5px dotted #00ff88;
+      object-fit: cover;
+      box-shadow: 0 0 20px #00ff88;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px #00ff88; }
+      50% { box-shadow: 0 0 30px #00ff88, 0 0 60px #00ff88; }
+      100% { box-shadow: 0 0 10px #00ff88; }
+    }
+
+    .preview-img { width: 70px; margin: 5px; border-radius: 6px; border: 2px solid #fff; }
+
+    /* 3D Button with gradient */
+    .cta-button { 
+      margin-top: 15px; width: 100%; padding: 14px;
+      border: none; border-radius: 10px;
+      background: linear-gradient(135deg, #2575fc, #6a11cb);
+      color: white; font-weight: bold; cursor: pointer;
+      font-size: 15px; letter-spacing: 1px;
+      box-shadow: 0 6px 20px rgba(37, 117, 252, 0.6);
+      transition: all 0.3s ease;
+    }
+    .cta-button:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 8px 25px rgba(37, 117, 252, 0.9), 0 0 25px rgba(106, 17, 203, 0.9);
+    }
+
+    #statusMsg { margin-top: 10px; font-weight: bold; color: #ffcc00; }
+  </style>
+</head>
+<body>
+  <!-- Loader Overlay -->
+  <div id="loaderOverlay">
+    <canvas id="three-canvas"></canvas>
+  </div>
+
+  <div class="bg-shapes">
+    <div class="shape"></div><div class="shape"></div><div class="shape"></div>
+    <div class="shape"></div><div class="shape"></div><div class="shape"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="container">
+      <nav class="glass">
+        <div class="logo"><span>ATTENDANCE PORTAL</span></div>
+        <div class="nav-links">
+          <a href="{{ url_for('register_page') }}" class="active">Register</a>
+          <a href="{{ url_for('login_page') }}">Login</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- REGISTER SECTION -->
+  <section class="auth-card glass" id="mainContent">
+    <h2>Register</h2>
+    <form id="registerForm">
+      <div class="form-group">
+        <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" required>
+      </div>
+      <div class="form-group">
+        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+      </div>
+
+      <!-- Camera -->
+      <div class="camera-section">
+        <video id="regVideo" autoplay playsinline muted></video>
+        <canvas id="regCanvas" style="display:none;"></canvas>
+      </div>
+
+      <button type="button" class="cta-button" id="startLiveness">▶️ Start Liveness</button>
+      <div id="previewContainer"></div>
+
+      <button type="submit" class="cta-button">Register</button>
+    </form>
+    <p id="statusMsg"></p>
+  </section>
+
+  <!-- ✅ Toastify JS -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+  <script>
+    let capturedImages = [];
+    let steps = ["Look straight", "Blink once", "Turn head right", "Turn head left"];
+    let currentStep = 0;
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { document.getElementById('regVideo').srcObject = stream; })
+      .catch(err => console.error("Camera error:", err));
+
+    function captureFrame() {
+      let video = document.getElementById('regVideo');
+      let canvas = document.getElementById('regCanvas');
+      let ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/png");
+    }
+
+    function speak(text) {
+      let msg = new SpeechSynthesisUtterance(text);
+      msg.rate = 1; msg.pitch = 1; msg.lang = "en-US";
+      window.speechSynthesis.speak(msg);
+    }
+
+    document.getElementById("startLiveness").addEventListener("click", ()=>{
+      capturedImages = [];
+      document.getElementById("previewContainer").innerHTML = "";
+      let status = document.getElementById("statusMsg");
+      currentStep = 0;
+
+      function runStep() {
+        if (currentStep >= steps.length) {
+          status.innerText = "✅ All poses captured!";
+          return;
+        }
+        let stepText = steps[currentStep];
+        status.innerText = "👉 " + stepText;
+        speak(stepText);
+
+        setTimeout(()=>{
+          let imgData = captureFrame();
+          capturedImages.push(imgData);
+
+          let img = document.createElement("img");
+          img.src = imgData;
+          img.classList.add("preview-img");
+          document.getElementById("previewContainer").appendChild(img);
+
+          currentStep++;
+          setTimeout(runStep, 2000);
+        }, 2000);
+      }
+      runStep();
+    });
+
+    document.getElementById("registerForm").addEventListener("submit", async function(e){
+      e.preventDefault();
+      let name = document.getElementById("fullName").value.trim();
+      let email = document.getElementById("email").value.trim();
+      let password = document.getElementById("password").value.trim();
+
+      if (!name || !email || !password) {
+        Toastify({
+          text: "❌ All fields are required!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #ff416c, #ff4b2b)",
+        }).showToast();
+        return;
+      }
+      if (capturedImages.length < 4) {
+        Toastify({
+          text: "❌ Please complete liveness steps!",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #ff416c, #ff4b2b)",
+        }).showToast();
+        return;
+      }
+
+      let response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, face_images: capturedImages })
+      });
+
+      let result = await response.json();
+
+      if (result.success) {
+        Toastify({
+          text: `🎉 Registered Successfully! Waiting for Admin approval: ${result.student_id}`,
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+        }).showToast();
+
+        setTimeout(()=> window.location.href = "/login", 2000);
+      } else {
+        Toastify({
+          text: "⚠️ " + result.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #ff416c, #ff4b2b)",
+        }).showToast();
+      }
+    });
+  </script>
+
+  <!-- Three.js Loader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("three-canvas"), alpha: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const geometry = new THREE.IcosahedronGeometry(1.5, 1);
+    const material = new THREE.MeshBasicMaterial({color: 0x00f7ff, wireframe: true});
+    const poly = new THREE.Mesh(geometry, material);
+    scene.add(poly);
+
+    camera.position.z = 5;
+
+    function animatePoly() {
+      requestAnimationFrame(animatePoly);
+      poly.rotation.x += 0.02;
+      poly.rotation.y += 0.02;
+      renderer.render(scene, camera);
+    }
+    animatePoly();
+
+    window.addEventListener("load", () => {
+      setTimeout(()=>{
+        document.getElementById("loaderOverlay").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+      }, 4000);
+    });
+  </script>
+</body>
+</html>

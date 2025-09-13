@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Attendance Management</title>
+
+  <!-- ✅ Load CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <style>
+    body {
+      margin: 0; font-family: Arial, sans-serif; color: white;
+      overflow-x: hidden;
+      perspective: 1000px;
+    }
+
+    /* Floating background shapes */
+    .bg-shapes .shape {
+      position: absolute;
+      width: 200px; height: 200px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.3), inset 0 8px 25px rgba(255,255,255,0.15);
+      animation: float3D 10s infinite ease-in-out alternate, rotate3D 18s infinite linear;
+    }
+    .bg-shapes .shape:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+    .bg-shapes .shape:nth-child(2) { top: 30%; right: 10%; animation-delay: 3s; }
+    .bg-shapes .shape:nth-child(3) { bottom: 20%; left: 20%; animation-delay: 6s; }
+    .bg-shapes .shape:nth-child(4) { bottom: 15%; right: 25%; animation-delay: 9s; }
+
+    @keyframes float3D {
+      0% { transform: translateY(0) translateX(0) scale(1); }
+      100% { transform: translateY(-50px) translateX(40px) scale(1.1); }
+    }
+    @keyframes rotate3D {
+      0% { transform: rotateX(0) rotateY(0); }
+      100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+    /* Login Card */
+    .auth-card { 
+      max-width: 420px; margin: 100px auto; padding: 35px; text-align: center; 
+      border-radius: 20px;
+      backdrop-filter: blur(20px);
+      background: rgba(255,255,255,0.08);
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+      transform-style: preserve-3d;
+      opacity: 0; transform: translateY(40px) scale(0.95);
+      animation: fadeInUp 1s ease forwards;
+      transition: transform 0.6s ease, box-shadow 0.6s ease;
+    }
+    .auth-card:hover {
+      transform: rotateY(10deg) rotateX(5deg) scale(1.02);
+      box-shadow: 0 20px 60px rgba(0,255,200,0.7);
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .auth-card h2 { margin-bottom: 20px; font-size: 26px; color: #00f7ff; text-shadow: 0 0 10px #00f7ff; }
+
+    .form-group { margin: 15px 0; }
+    .form-group input {
+      width: 100%; padding: 12px; border-radius: 10px;
+      border: none; outline: none;
+      background: rgba(255,255,255,0.1); color: white;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    .form-group input:focus {
+      box-shadow: 0 0 15px #00f7ff, 0 0 30px #6a11cb;
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Button 3D */
+    .cta-button { 
+      margin-top: 15px; width: 100%; padding: 14px;
+      border: none; border-radius: 10px;
+      background: linear-gradient(135deg, #2575fc, #6a11cb);
+      color: white; font-weight: bold; cursor: pointer;
+      font-size: 15px; letter-spacing: 1px;
+      box-shadow: 0 6px 20px rgba(37, 117, 252, 0.6);
+      transition: all 0.3s ease, transform 0.2s ease-in-out;
+      transform-style: preserve-3d;
+    }
+    .cta-button:hover {
+      transform: translateY(-5px) scale(1.05) rotateX(5deg);
+      box-shadow: 0 10px 30px rgba(37, 117, 252, 1), 0 0 25px rgba(106, 17, 203, 1);
+    }
+    .cta-button:active {
+      transform: translateY(2px) scale(0.98);
+      box-shadow: inset 0 5px 15px rgba(0,0,0,0.5);
+    }
+
+    #loginStatus { margin-top: 15px; font-weight: bold; color: #ffcc00; }
+  </style>
+</head>
+<body>
+  <div class="bg-shapes">
+    <div class="shape"></div><div class="shape"></div>
+    <div class="shape"></div><div class="shape"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="container">
+      <nav class="glass">
+        <div class="logo"><span>ATTENDANCE PORTAL</span></div>
+        <div class="nav-links">
+          <a href="{{ url_for('register_page') }}">Register</a>
+          <a href="{{ url_for('login_page') }}" class="active">Login</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- LOGIN SECTION -->
+  <section class="auth-card glass">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <input type="email" id="email" name="email" placeholder="Enter Your Email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" id="password" name="password" placeholder="Enter Your Password" required>
+      </div>
+      <button type="submit" class="cta-button">Login</button>
+    </form>
+    <p id="loginStatus"></p>
+  </section>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async function(e){
+      e.preventDefault();
+      let email = document.getElementById("email").value;
+      let password = document.getElementById("password").value;
+
+      let response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, password: password })
+      });
+
+      let result = await response.json();
+      document.getElementById("loginStatus").innerText = result.message;
+
+      if (result.success) {
+        setTimeout(() => {
+          switch (result.role) {
+            case "admin": window.location.href = "/admin/dashboard"; break;
+            case "faculty": window.location.href = "/faculty/analysis"; break;
+            case "student": default: window.location.href = "/index"; break;
+          }
+        }, 1000);
+      }
+    });
+  </script>
+  <!-- Three.js Loader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("three-canvas"), alpha: true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const geometry = new THREE.IcosahedronGeometry(1.5, 1);
+    const material = new THREE.MeshBasicMaterial({color: 0x00f7ff, wireframe: true});
+    const poly = new THREE.Mesh(geometry, material);
+    scene.add(poly);
+
+    camera.position.z = 5;
+
+    function animatePoly() {
+      requestAnimationFrame(animatePoly);
+      poly.rotation.x += 0.02;
+      poly.rotation.y += 0.02;
+      renderer.render(scene, camera);
+    }
+    animatePoly();
+
+    window.addEventListener("load", () => {
+      setTimeout(()=>{
+        document.getElementById("loaderOverlay").style.display = "none";
+        document.getElementById("mainContent").style.display = "block";
+      }, 4000);
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATTENDANCE PORTAL</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <style>
+    body {
+      color: white;
+      font-family: sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* 🔹 Background Shapes */
+    .bg-shapes {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bg-shapes .shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      mix-blend-mode: screen;
+      animation: floatAnim linear infinite;
+    }
+    @keyframes floatAnim {
+      0% { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+      50% { transform: translateY(-80px) rotateX(180deg) rotateY(180deg); opacity: 0.3; }
+      100% { transform: translateY(0) rotateX(360deg) rotateY(360deg); }
+    }
+
+    /* Navbar */
+    .navbar { display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 12px; position: relative; z-index: 2; }
+    .nav-links a { margin-right: 15px; text-decoration: none; color: white; font-weight: 500; }
+    .logout-btn a { background: #e74c3c; color: white; padding: 8px 15px; border-radius: 6px;
+      text-decoration: none; font-weight: bold; transition: 0.3s; }
+    .logout-btn a:hover { background: #c0392b; }
+
+    /* Chatbot Card */
+    .auth-card { width: 400px; margin: 50px auto; padding: 20px; border-radius: 20px;
+      background: rgba(255,255,255,0.12); backdrop-filter: blur(12px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3); color: white; text-align: center;
+      display: flex; flex-direction: column; position: relative; z-index: 1; }
+    .auth-card .title { margin-bottom: 15px; font-size: 20px; font-weight: bold; }
+    .chat-body { height: 300px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,0.08);
+      overflow-y: auto; display: flex; flex-direction: column; margin-bottom: 10px; }
+    .bot-message, .user-message { padding: 8px 12px; border-radius: 10px; margin: 5px 0; max-width: 80%; }
+    .bot-message { background: rgba(255,255,255,0.2); align-self: flex-start; }
+    .user-message { background: rgba(0,123,255,0.8); color: white; align-self: flex-end; }
+    .chat-footer { display: flex; gap: 10px; }
+    .chat-footer input { flex: 1; padding: 10px; border-radius: 12px; border: none;
+      outline: none; background: rgba(255,255,255,0.15); color: white; }
+    .chat-footer button { padding: 0 16px; border: none; border-radius: 12px;
+      background: rgba(0,123,255,0.8); color: white; cursor: pointer; }
+    .quick-btn { background: rgba(0,123,255,0.7); border: none; color: white;
+      border-radius: 8px; padding: 4px 8px; margin: 2px; cursor: pointer; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- 🔹 Animated Background Shapes -->
+  <div class="bg-shapes" id="bgShapes"></div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="container">
+      <nav class="glass navbar">
+        <div class="logo"><span>ATTENDANCE PORTAL</span></div>
+        <nav class="navbar">
+          <div class="nav-links">
+            <a href="{{ url_for('index') }}">Home</a>
+            <a href="{{ url_for('dashboard') }}">Analysis</a>
+            <a href="{{ url_for('student_attendance_page') }}" class="active">My Attendance</a>
+            <a href="{{ url_for('chatbot') }}">Chat</a>
+          </div>
+          <div class="logout-btn">
+            <a href="{{ url_for('logout') }}">Logout</a>
+          </div>
+        </nav>
+      </nav>
+    </div>
+  </header>
+
+  <!-- CHATBOT CARD -->
+  <section class="auth-card glass" id="chatbot-card">
+    <h2 class="title">🤖 Educational Chatbot</h2>
+
+    <div class="chat-body" id="chatBody">
+      <div class="bot-message">Hello! I can help with your attendance and results.</div>
+      <div class="bot-message">
+        Quick Actions: 
+        <button class="quick-btn" onclick="autoQuery('attendance')">Attendance</button>
+        <button class="quick-btn" onclick="autoQuery('result')">Result</button>
+        <button class="quick-btn" onclick="autoQuery('report')">Report</button>
+      </div>
+    </div>
+
+    <div class="chat-footer">
+      <input type="text" id="userInput" placeholder="Type a message..." />
+      <button id="sendBtn">➤</button>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div id="footer">
+    <div class="container">
+      <footer class="glass">
+        <div class="footer-content">
+          <div class="footer-links">
+            <a href="#">About Us</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Contact</a>
+          </div>
+          <div class="copyright">
+            &copy; All rights reserved. ATTENDANCE PORTAL
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script>
+    // 🔹 Generate Floating Shapes
+    const colors = ["#0a8df7","#28a745","#e74c3c","#ff9800","#9b59b6"];
+    const container = document.getElementById("bgShapes");
+    for(let i=0;i<25;i++){
+      const div = document.createElement("div");
+      div.className="shape";
+      const size = 20 + Math.random()*60;
+      div.style.width = div.style.height = size+"px";
+      div.style.left = Math.random()*100+"%";
+      div.style.top = Math.random()*100+"%";
+      div.style.background = colors[Math.floor(Math.random()*colors.length)];
+      div.style.animationDuration = (5 + Math.random()*10)+"s";
+      container.appendChild(div);
+    }
+
+    // 🔹 Chatbot JS
+    const sendBtn = document.getElementById("sendBtn");
+    const userInput = document.getElementById("userInput");
+    const chatBody = document.getElementById("chatBody");
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+
+    function autoQuery(text){
+      userInput.value = text;
+      sendMessage();
+    }
+
+    async function sendMessage(){
+      let msg = userInput.value.trim();
+      if(!msg) return;
+
+      // Show user message
+      let userMsg = document.createElement("div");
+      userMsg.className = "user-message";
+      userMsg.innerText = msg;
+      chatBody.appendChild(userMsg);
+      userInput.value = "";
+      chatBody.scrollTop = chatBody.scrollHeight;
+
+      // Show temporary "Typing..."
+      let botMsg = document.createElement("div");
+      botMsg.className = "bot-message";
+      botMsg.innerText = "Typing...";
+      chatBody.appendChild(botMsg);
+      chatBody.scrollTop = chatBody.scrollHeight;
+
+      try {
+        const res = await fetch("/api/chatgpt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: msg })
+        });
+        const data = await res.json();
+        botMsg.innerText = data.success ? data.answer : "⚠️ " + data.message;
+      } catch(err){
+        botMsg.innerText = "⚠️ Error connecting to API.";
+        console.error(err);
+      }
+
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+  </script>
+
+  <script src="{{ url_for('static', filename='js/templatemo-glossy-touch.js') }}"></script>
+</body>
+</html>

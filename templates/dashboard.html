@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATTENDANCE PORTAL</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <style>
+    body {
+      color:white;
+      font-family:sans-serif;
+      margin:0;
+      position:relative;
+      overflow-x:hidden;
+    }
+
+    /* Floating Circles */
+    .floating-circle {
+      position:absolute;
+      border-radius:50%;
+      opacity:0.15;
+      pointer-events:none;
+      animation: floatAnim linear infinite;
+      mix-blend-mode: screen;
+      z-index:1;
+    }
+
+    @keyframes floatAnim {
+      0% { transform: translateY(0) rotate(0deg); opacity:0.15; }
+      50% { transform: translateY(-60px) rotate(180deg); opacity:0.3; }
+      100% { transform: translateY(0) rotate(360deg); opacity:0.15; }
+    }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin: 30px;
+      position:relative;
+      z-index:2; /* Above background shapes */
+    }
+
+    .dashboard-card {
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.3s;
+    }
+
+    .dashboard-card:hover { transform: translateY(-5px) scale(1.02); }
+
+    .dashboard-card h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      align-items: center;
+    }
+
+    .meta-pill {
+      background: rgba(10,141,247,0.2);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 50px;
+      font-size: 12px;
+    }
+
+    .chart-wrap { width:100%; height:260px; display:flex; justify-content:center; align-items:center; }
+    canvas { max-width:100%; max-height:240px; }
+
+    /* Button */
+    .btn {
+      background: linear-gradient(90deg, #0b67ff, #0a8df7);
+      color: white; padding:6px 12px;
+      border-radius: 8px; border:none;
+      cursor:pointer; font-size:13px; font-weight:600;
+      transition:0.3s;
+    }
+    .btn:hover { background:#085edc; transform:scale(1.05); }
+
+    /* Header & Nav */
+    .navbar { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background: rgba(255,255,255,0.1); border-radius:12px; z-index:2; position:relative; }
+    .nav-links a { margin-right:15px; text-decoration:none; color:white; font-weight:500; padding:5px 10px; border-radius:6px; transition:0.3s; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.2); }
+    .logout-btn a { background:#e74c3c; color:white; padding:8px 15px; border-radius:6px; text-decoration:none; font-weight:bold; transition:0.3s; }
+    .logout-btn a:hover { background:#c0392b; }
+  </style>
+</head>
+<body>
+
+<!-- Floating Circles Container -->
+<div id="floatingShapes"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="container">
+    <nav class="glass navbar">
+      <div class="logo"><span>ATTENDANCE PORTAL</span></div>
+      <div class="nav-links">
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('dashboard') }}">Analysis</a>
+        <a href="{{ url_for('student_attendance_page') }}" class="active">My Attendance</a>
+        <a href="{{ url_for('chatbot') }}">Chat</a>
+      </div>
+      <div class="logout-btn">
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid">
+  <!-- Attendance Pie -->
+  <div class="dashboard-card">
+    <h3>Total Attendance <span class="meta-pill" id="attendancePercentPill">--%</span></h3>
+    <div class="chart-wrap"><canvas id="pieAttendance"></canvas></div>
+    <small>Last updated: <span id="lastUpdated">--</span></small>
+  </div>
+  <!-- Missed Classes -->
+  <div class="dashboard-card">
+    <h3>Missed Classes <span class="meta-pill">8 weeks</span></h3>
+    <div class="chart-wrap"><canvas id="lineMissed"></canvas></div>
+  </div>
+  <!-- Assignments Pie -->
+  <div class="dashboard-card">
+    <h3>Assignments <span class="meta-pill" id="assignmentsPercentPill">--%</span></h3>
+    <div class="chart-wrap"><canvas id="pieAssignments"></canvas></div>
+  </div>
+  <!-- Assignments Bar -->
+  <div class="dashboard-card">
+    <h3>Course-wise Assignments</h3>
+    <div class="chart-wrap"><canvas id="barAssignments"></canvas></div>
+  </div>
+  <!-- Time Report -->
+  <div class="dashboard-card" style="grid-column:1 / -1;">
+    <h3>Time-in / Time-out Report <button class="btn" id="downloadCsvBtn">Download CSV</button></h3>
+    <table class="report-table" id="timeReportTable">
+      <thead><tr><th>Date</th><th>In</th><th>Out</th><th>Duration (mins)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p>Total Days: <strong id="totalDays">0</strong> | Avg Duration: <strong id="avgDuration">0</strong> mins</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <div class="container">
+    <footer class="glass">
+      <div class="footer-content">
+        <div class="footer-links">
+          <a href="#">About Us</a>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">XML Sitemap</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="copyright">&copy; All rights reserved. ATTENDANCE PORTAL</div>
+      </footer>
+  </div>
+</div>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Floating circles
+  const colors = ["#0a8df7","#28a745","#e74c3c","#ff9800","#9b59b6"];
+  const shapesContainer = document.getElementById("floatingShapes");
+  for(let i=0;i<25;i++){
+    const div = document.createElement("div");
+    div.className="floating-circle";
+    const size = 20+Math.random()*50;
+    div.style.width=div.style.height=size+"px";
+    div.style.left=Math.random()*100+"%";
+    div.style.top=Math.random()*100+"%";
+    div.style.background=colors[Math.floor(Math.random()*colors.length)];
+    div.style.animationDuration=(5+Math.random()*10)+"s";
+    shapesContainer.appendChild(div);
+  }
+
+  // Attendance Pie
+  const attended = 34, missed = 6;
+  const attendancePercent = Math.round(attended/(attended+missed)*100);
+  document.getElementById("attendancePercentPill").innerText=attendancePercent+"%";
+  document.getElementById("lastUpdated").innerText=new Date().toLocaleDateString();
+  new Chart(pieAttendance,{type:"doughnut",data:{labels:["Attended","Missed"],datasets:[{data:[attended,missed],backgroundColor:["#0a8df7","#e74c3c"]}]},options:{cutout:"60%"} });
+
+  // Missed Classes
+  new Chart(lineMissed,{type:"line",data:{labels:["Wk-7","Wk-6","Wk-5","Wk-4","Wk-3","Wk-2","Wk-1","This Wk"],datasets:[{label:"Missed",data:[2,1,3,0,2,4,1,1],borderColor:"#0a8df7",backgroundColor:"rgba(10,141,247,0.2)",fill:true}]} });
+
+  // Assignments
+  const assignments={completed:18,pending:5,courses:[{name:"Math",completed:4,pending:1},{name:"CS",completed:3,pending:0},{name:"Physics",completed:2,pending:2},{name:"Chemistry",completed:4,pending:0},{name:"English",completed:5,pending:0}]};
+  document.getElementById("assignmentsPercentPill").innerText=Math.round(assignments.completed/(assignments.completed+assignments.pending)*100)+"%";
+  new Chart(pieAssignments,{type:"doughnut",data:{labels:["Completed","Pending"],datasets:[{data:[assignments.completed,assignments.pending],backgroundColor:["#0a8df7","#e74c3c"]}]},options:{cutout:"60%"}});
+  new Chart(barAssignments,{type:"bar",data:{labels:assignments.courses.map(c=>c.name),datasets:[{label:"Completed",data:assignments.courses.map(c=>c.completed),backgroundColor:"#0a8df7"},{label:"Pending",data:assignments.courses.map(c=>c.pending),backgroundColor:"#e74c3c"}]}});
+
+  // Time Report
+  const timeRecords=[{date:"2025-09-01",in:"09:00",out:"10:30"},{date:"2025-09-02",in:"09:10",out:"10:40"}];
+  const tbody=document.querySelector("#timeReportTable tbody"); let totalMins=0;
+  timeRecords.forEach(r=>{
+    let mins=(+r.out.split(":")[0]*60+ +r.out.split(":")[1])-(+r.in.split(":")[0]*60+ +r.in.split(":")[1]);
+    totalMins+=mins;
+    tbody.innerHTML+=`<tr><td>${r.date}</td><td>${r.in}</td><td>${r.out}</td><td>${mins}</td></tr>`;
+  });
+  document.getElementById("totalDays").innerText=timeRecords.length;
+  document.getElementById("avgDuration").innerText=Math.round(totalMins/timeRecords.length);
+
+  document.getElementById("downloadCsvBtn").addEventListener("click",()=>{
+    let csv="Date,In,Out,Duration\n";
+    timeRecords.forEach(r=>{
+      let mins=(+r.out.split(":")[0]*60+ +r.out.split(":")[1])-(+r.in.split(":")[0]*60+ +r.in.split(":")[1]);
+      csv+=`${r.date},${r.in},${r.out},${mins}\n`;
+    });
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="attendance_report.csv";
+    a.click();
+  });
+</script>
+</body>
+</html>

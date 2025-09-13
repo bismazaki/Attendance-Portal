@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Faculty Attendance — Portal</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <style>
+    body { color:white; font-family:sans-serif;  margin:0; overflow-x:hidden; position:relative; }
+    .navbar { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background: rgba(255,255,255,0.1); border-radius:12px; margin-bottom:20px; z-index:2; position:relative; }
+    .nav-links a { margin-right:15px; text-decoration:none; color:white; font-weight:500; padding:5px 10px; border-radius:6px; transition:0.3s; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(255,255,255,0.2); }
+
+    .detector-wrapper { display:flex; justify-content:center; padding:48px 16px; z-index:2; position:relative; }
+    .detector-panel { width:420px; max-width:calc(100% - 40px); background: rgba(255,255,255,0.04); border-radius:14px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.25); text-align:center; color:#e6eefc; backdrop-filter: blur(8px); }
+    .detector-panel h2 { color:#fff; margin-bottom:16px; }
+    video#videoPreview { width:260px; height:260px; border-radius:50%; border:5px dotted limegreen; object-fit:cover; background:#000; }
+    #statusMsg { margin-top:16px; font-size:16px; min-height:22px; font-weight:bold; }
+
+    #footer { margin-top:50px; z-index:2; position:relative; }
+    #footer footer { background: rgba(0,0,0,0.6); padding:15px; border-radius:12px; text-align:center; color:white; }
+
+    /* === Floating Shapes === */
+    .floating-shape {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      pointer-events: none;
+      animation: floatAnim linear infinite;
+      mix-blend-mode: screen;
+      z-index:1;
+    }
+
+    @keyframes floatAnim {
+      0% { transform: translateY(0) rotate(0deg); opacity:0.15; }
+      50% { transform: translateY(-60px) rotate(180deg); opacity:0.3; }
+      100% { transform: translateY(0) rotate(360deg); opacity:0.15; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating Shapes Container -->
+<div id="shapesContainer"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="container">
+    <nav class="glass navbar">
+      <div class="logo"><span>FACULTY PORTAL</span></div>
+      <div class="nav-links">
+        <a href="{{ url_for('faculty_analysis_page') }}">Dashboard</a>
+        <a href="{{ url_for('faculty_courses_page') }}">Courses</a>
+        <a href="{{ url_for('faculty_attendance_page') }}" class="active">Attendance</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<!-- ATTENDANCE PANEL -->
+<div class="detector-wrapper">
+  <div class="detector-panel glass">
+    <h2>Realtime Faculty Attendance</h2>
+    <video id="videoPreview" autoplay muted playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <p id="statusMsg">⏳ Initializing camera...</p>
+  </div>
+</div>
+
+
+
+<!-- JS -->
+<script>
+  // === Floating Shapes ===
+  const shapesContainer = document.getElementById("shapesContainer");
+  const colors = ["#0a8df7", "#28a745", "#e74c3c", "#ff9800", "#9b59b6"];
+  for(let i=0;i<20;i++){
+    const shape = document.createElement("div");
+    shape.className="floating-shape";
+    const size = 20 + Math.random()*50;
+    shape.style.width = shape.style.height = size + "px";
+    shape.style.left = Math.random()*100 + "%";
+    shape.style.top = Math.random()*100 + "%";
+    shape.style.background = colors[Math.floor(Math.random()*colors.length)];
+    shape.style.animationDuration = (5 + Math.random()*10) + "s";
+    shapesContainer.appendChild(shape);
+  }
+
+  // === Camera + Attendance Logic ===
+  const video = document.getElementById('videoPreview');
+  const canvas = document.getElementById('canvas');
+  const statusMsg = document.getElementById('statusMsg');
+
+  async function startCamera(){
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      video.srcObject = stream;
+      setTimeout(captureAndSend, 3000);
+    } catch (err) {
+      statusMsg.style.color = "red";
+      statusMsg.innerText = "Camera error: " + (err.message || err);
+    }
+  }
+  startCamera();
+
+  async function captureAndSend(){
+    if (!video.videoWidth || !video.videoHeight) {
+      statusMsg.innerText = "⚠️ Camera not ready. Retrying...";
+      setTimeout(captureAndSend, 2000);
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataURL = canvas.toDataURL('image/png');
+
+    statusMsg.style.color = "#ffd69b";
+    statusMsg.innerText = "⏳ Verifying face...";
+
+    try {
+      const resp = await fetch("/api/faculty_attendance", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ face_image: dataURL })
+      });
+
+      const json = await resp.json();
+      if (json.success) {
+        statusMsg.style.color = "limegreen";
+        statusMsg.innerText = "✅ Present (" + new Date().toLocaleTimeString() + ")";
+        speak("Attendance marked. You are present.");
+      } else {
+        statusMsg.style.color = "salmon";
+        statusMsg.innerText = "❌ Not marked — " + json.message;
+        speak("Face not recognized. Attendance not marked.");
+      }
+    } catch (err) {
+      statusMsg.style.color = "red";
+      statusMsg.innerText = "Server error: " + (err.message || err);
+    }
+  }
+
+  function speak(text){
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.lang = "en-US"; msg.rate = 1; msg.pitch = 1;
+    window.speechSynthesis.speak(msg);
+  }
+</script>
+</body>
+</html>

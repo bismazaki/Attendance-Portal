@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejected Students - Admin Portal</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <!-- Toastify CSS -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      color: #fff;
+      perspective: 1500px;
+      overflow-x: hidden;
+    }
+
+    /* Navbar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      border-radius: 16px;
+      transition: 0.3s;
+    }
+    .nav-links { display: flex; gap: 20px; }
+    .nav-links a {
+      position: relative;
+      text-decoration: none;
+      color: white;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      transition: 0.3s;
+    }
+    .nav-links a:hover, .nav-links a.active {
+      background: rgba(255,255,255,0.2);
+      transform: translateZ(5px);
+    }
+
+    /* Dashboard Grid & Cards */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 30px;
+      margin: 40px;
+      perspective: 1000px;
+    }
+    .dashboard-card {
+      backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+      transform-style: preserve-3d;
+    }
+    .dashboard-card:hover {
+      transform: rotateY(5deg) rotateX(5deg) translateZ(20px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+    }
+
+    .dashboard-card h3 {
+      margin-bottom: 20px;
+      font-size: 22px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Table */
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      transition: transform 0.3s ease;
+    }
+    .report-table th, .report-table td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      text-align: center;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+    .report-table tr:hover td {
+      transform: translateZ(10px);
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      transform-style: preserve-3d;
+      color: #32033b;
+    }
+    .btn.approve { background: #28a745; margin-right: 5px; }
+    .btn.reject { background: #e74c3c; }
+    .btn:hover {
+      transform: translateY(-3px) translateZ(10px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    /* Floating background shapes */
+    .bg-shapes .shape {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 50%;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.25), inset 0 5px 15px rgba(255,255,255,0.2);
+      animation: float3D 15s infinite ease-in-out alternate;
+    }
+    .bg-shapes .shape:nth-child(1){top:10%; left:5%; animation-delay:0s;}
+    .bg-shapes .shape:nth-child(2){top:20%; right:10%; animation-delay:2s;}
+    .bg-shapes .shape:nth-child(3){bottom:15%; left:10%; animation-delay:4s;}
+    @keyframes float3D {
+      0% {transform: translateY(0) translateX(0) scale(1) rotate(0deg);}
+      50% {transform: translateY(-30px) translateX(15px) scale(1.1) rotate(20deg);}
+      100% {transform: translateY(-60px) translateX(30px) scale(1) rotate(40deg);}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>    <div class="shape"></div>
+    <div class="shape"></div>
+
+          <div class="shape"></div>
+
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <nav class="glass navbar">
+      <div class="logo"><span>ADMIN PORTAL</span></div>
+      <div class="nav-links">
+        <a href="{{ url_for('rejected_list') }}" class="active">Rejected Students</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+    <div class="dashboard-card">
+      <h3>Rejected Students</h3>
+      <table class="report-table" id="rejectedTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Reason</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rejected_users %}
+            {% for user in rejected_users %}
+            <tr>
+              <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.rejected_reason or 'N/A' }}</td>
+              <td>
+                <button class="btn approve-btn" data-email="{{ user.email }}">Re-Approve</button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4">No rejected students found</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- JS Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.2/vanilla-tilt.min.js"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+  <script>
+    // 3D Tilt effect
+    VanillaTilt.init(document.querySelectorAll(".dashboard-card, .btn"), {
+      max: 15,
+      speed: 400,
+      glare: true,
+      "max-glare": 0.5,
+    });
+
+    // Re-Approve button with Toastify
+    document.querySelectorAll(".approve-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const email = btn.dataset.email;
+        const role = "student";
+        try {
+          const res = await fetch("/api/admin/approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, role })
+          });
+          const result = await res.json();
+
+          Toastify({
+            text: result.message,
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: result.success ? "linear-gradient(to right, #00b09b, #96c93d)" : "linear-gradient(to right, #e74c3c, #c0392b)",
+            stopOnFocus: true,
+          }).showToast();
+
+          if(result.success){
+            setTimeout(() => location.reload(), 1500);
+          }
+
+        } catch (err) {
+          console.error(err);
+          Toastify({
+            text: "Error re-approving user.",
+            duration: 3000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #e74c3c, #c0392b)",
+          }).showToast();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

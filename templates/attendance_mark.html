@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mark Attendance — Attendance Portal</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <style>
+    .detector-wrapper {
+      display:flex;
+      justify-content:center;
+      padding: 48px 16px;
+    }
+    .detector-panel {
+      width: 420px;
+      max-width: calc(100% - 40px);
+      background: rgba(255,255,255,0.04);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      text-align: center;
+      color: #e6eefc;
+    }
+    .detector-panel h2 { color: #fff; margin-bottom: 16px; }
+
+    /* ✅ Green dotted circle */
+    video#videoPreview {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      border: 5px dotted limegreen;
+      object-fit: cover;
+      background: #000;
+    }
+    #statusMsg {
+      margin-top: 16px;
+      font-size: 16px;
+      min-height: 22px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-shapes">
+    <div class="shape"></div><div class="shape"></div>
+    <div class="shape"></div><div class="shape"></div>
+    <div class="shape"></div><div class="shape"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="container">
+      <nav class="glass">
+        <div class="logo">
+          <span>ATTENDANCE PORTAL</span>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <div class="detector-wrapper">
+    <div class="detector-panel glass">
+      <h2>Realtime Attendance</h2>
+
+      <video id="videoPreview" autoplay muted playsinline></video>
+      <canvas id="canvas" style="display:none;"></canvas>
+
+      <p id="statusMsg">⏳ Initializing camera...</p>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('videoPreview');
+    const canvas = document.getElementById('canvas');
+    const statusMsg = document.getElementById('statusMsg');
+
+    // ✅ Start Camera
+    async function startCamera(){
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        video.srcObject = stream;
+
+        // after 3 sec auto capture
+        setTimeout(captureAndSend, 3000);
+      } catch (err) {
+        statusMsg.style.color = "red";
+        statusMsg.innerText = "Camera error: " + (err.message || err);
+      }
+    }
+    startCamera();
+
+    // ✅ Capture frame + send to backend
+    async function captureAndSend(){
+      if (!video.videoWidth || !video.videoHeight) {
+        statusMsg.innerText = "⚠️ Camera not ready. Retrying...";
+        setTimeout(captureAndSend, 2000);
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataURL = canvas.toDataURL('image/png');
+
+      statusMsg.style.color = "#ffd69b";
+      statusMsg.innerText = "⏳ Verifying face...";
+
+      try {
+        const resp = await fetch("/api/mark_attendance", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ face_image: dataURL })
+        });
+
+        const json = await resp.json();
+        if (json.success) {
+          statusMsg.style.color = "limegreen";
+          statusMsg.innerText = "✅ Present (" + new Date().toLocaleTimeString() + ")";
+          speak("Attendance marked. You are present.");
+        } else {
+          statusMsg.style.color = "salmon";
+          statusMsg.innerText = "❌ Absent — " + json.message;
+          speak("Face not recognized. Marked absent.");
+        }
+      } catch (err) {
+        statusMsg.style.color = "red";
+        statusMsg.innerText = "Server error: " + (err.message || err);
+      }
+    }
+
+    // ✅ Voice feedback
+    function speak(text){
+      let msg = new SpeechSynthesisUtterance(text);
+      msg.lang = "en-US"; msg.rate = 1; msg.pitch = 1;
+      window.speechSynthesis.speak(msg);
+    }
+  </script>
+</body>
+</html>
