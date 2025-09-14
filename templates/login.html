@@ -7,6 +7,8 @@
 
   <!-- ✅ Load CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
   <style>
     body {
       margin: 0; font-family: Arial, sans-serif; color: white;
@@ -92,7 +94,28 @@
       box-shadow: inset 0 5px 15px rgba(0,0,0,0.5);
     }
 
-    #loginStatus { margin-top: 15px; font-weight: bold; color: #ffcc00; }
+    #loginStatus, #resetStatus { margin-top: 15px; font-weight: bold; color: #ffcc00; }
+
+    /* Forgot Password Modal */
+    .modal {
+      display: none; position: fixed; z-index: 999;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-content {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(20px);
+      padding: 30px; border-radius: 20px;
+      width: 100%; max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    .modal-content input {
+      width: 100%; margin: 10px 0; padding: 12px;
+      border-radius: 10px; border: none;
+      background: rgba(255,255,255,0.1); color: white;
+    }
   </style>
 </head>
 <body>
@@ -127,9 +150,30 @@
       <button type="submit" class="cta-button">Login</button>
     </form>
     <p id="loginStatus"></p>
+
+    <!-- Forgot Password Link -->
+    <p style="margin-top: 15px;">
+      <a href="#" style="color:#00f7ff;" onclick="openForgotModal()">Forgot Password?</a>
+    </p>
   </section>
 
+  <!-- ✅ Forgot Password Modal -->
+  <div id="forgotModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h3 style="color:#00f7ff;">Reset Password</h3>
+      <input type="email" id="resetEmail" placeholder="Enter your Email" required>
+      <input type="password" id="newPassword" placeholder="New Password" required>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+      <button onclick="resetPassword()" class="cta-button">Update Password</button>
+      <p id="resetStatus"></p>
+      <button onclick="closeForgotModal()" style="margin-top:10px; background:red; color:white; border:none; padding:10px; border-radius:8px;">Close</button>
+    </div>
+  </div>
+
+  <!-- ✅ Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
   <script>
+    // Login API
     document.getElementById("loginForm").addEventListener("submit", async function(e){
       e.preventDefault();
       let email = document.getElementById("email").value;
@@ -145,6 +189,14 @@
       document.getElementById("loginStatus").innerText = result.message;
 
       if (result.success) {
+        Toastify({
+          text: "✅ " + result.message,
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+        }).showToast();
+
         setTimeout(() => {
           switch (result.role) {
             case "admin": window.location.href = "/admin/dashboard"; break;
@@ -152,38 +204,66 @@
             case "student": default: window.location.href = "/index"; break;
           }
         }, 1000);
+      } else {
+        Toastify({
+          text: "❌ " + result.message,
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
+        }).showToast();
       }
     });
-  </script>
-  <!-- Three.js Loader -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-  <script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({canvas: document.getElementById("three-canvas"), alpha: true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
 
-    const geometry = new THREE.IcosahedronGeometry(1.5, 1);
-    const material = new THREE.MeshBasicMaterial({color: 0x00f7ff, wireframe: true});
-    const poly = new THREE.Mesh(geometry, material);
-    scene.add(poly);
-
-    camera.position.z = 5;
-
-    function animatePoly() {
-      requestAnimationFrame(animatePoly);
-      poly.rotation.x += 0.02;
-      poly.rotation.y += 0.02;
-      renderer.render(scene, camera);
+    // Forgot Password Modal
+    function openForgotModal(){
+      document.getElementById("forgotModal").style.display = "flex";
     }
-    animatePoly();
+    function closeForgotModal(){
+      document.getElementById("forgotModal").style.display = "none";
+    }
 
-    window.addEventListener("load", () => {
-      setTimeout(()=>{
-        document.getElementById("loaderOverlay").style.display = "none";
-        document.getElementById("mainContent").style.display = "block";
-      }, 4000);
-    });
+    // Reset Password API
+    async function resetPassword(){
+      let email = document.getElementById("resetEmail").value;
+      let newPassword = document.getElementById("newPassword").value;
+      let confirmPassword = document.getElementById("confirmPassword").value;
+
+      if(newPassword !== confirmPassword){
+        document.getElementById("resetStatus").innerText = "❌ Passwords do not match!";
+        return;
+      }
+
+      let response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({email: email, newPassword: newPassword})
+      });
+
+      let result = await response.json();
+      document.getElementById("resetStatus").innerText = result.message;
+
+      if(result.success){
+        setTimeout(()=>{
+          closeForgotModal();
+          Toastify({
+            text: "✅ Password updated! Please login with new password.",
+            duration: 4000,
+            gravity: "top",
+            position: "right",
+            backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+          }).showToast();
+        }, 500);
+      } else {
+        Toastify({
+          text: "❌ " + result.message,
+          duration: 4000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "linear-gradient(to right, #ff5f6d, #ffc371)",
+        }).showToast();
+      }
+    }
   </script>
 
 </body>

@@ -1397,6 +1397,30 @@ def faculty_attendance_api():
         print("Faculty Attendance Error:", e)
         return jsonify({"success": False, "message": "Error processing face"}), 500
 
+# ---------------- FORGOT PASSWORD API ----------------
+@app.route("/api/forgot-password", methods=["POST"])
+def forgot_password():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    new_password = data.get("newPassword") or ""
+
+    if not email or not new_password:
+        return jsonify({"success": False, "message": "❌ Email and new password required"}), 400
+
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"success": False, "message": "❌ User not found"}), 404
+
+    # Hash new password
+    hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {"password": hashed_password}}
+    )
+
+    return jsonify({"success": True, "message": "✅ Password updated successfully!"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)
